@@ -24,13 +24,8 @@ export class AiContentService {
       const response = await axios.get(
         `${this.GEMINI_API_URL_LIST_MODEL}?key=${this.GEMINI_API_KEY}`,
       );
-      console.log('Available models:', response.data);
       return response.data;
     } catch (error) {
-      console.error(
-        'Error fetching models:',
-        error.response?.data || error.message,
-      );
       return { error: 'Failed to fetch models' };
     }
   }
@@ -59,14 +54,13 @@ export class AiContentService {
       };
     }
     let articleText;
-    const response = await axios.get(url);
-    const data = unfluff(response.data);
+    // const response = await axios.get(url);
+    // const data = unfluff(response.data);
 
-    if (data?.text == '') {
-      articleText = await this.extractTextWithPuppeteer(url);
-    }
+    articleText = await this.extractTextWithPuppeteer(url);
 
-    const prompt = `Summarize the following article and extract key points for the mentioned public URL:\n\n${articleText ? articleText : data.text}`;
+    const prompt = await this.getPrompt(articleText);
+
     let geminiResponse;
 
     try {
@@ -94,15 +88,44 @@ export class AiContentService {
       geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ??
       'No summary available.';
 
+    const cleaned = aiResponse
+      .replace(/```json\n?/, '')
+      .replace(/```/, '')
+      .trim();
+
+    // Step 2: Parse to JS object
+    const parsedData = JSON.parse(cleaned);
+
     return {
       type: 'success',
       data: {
         url: url,
-        title: data.title,
-        summary: aiResponse,
-        rawText: data.text,
+        title: parsedData.title,
+        summary: parsedData.summary,
+        keyPoints: parsedData.keyPoints,
         message: 'Data Fetched Sucessfully',
       },
     };
+  }
+
+  async getPrompt(content): Promise<string> {
+    return `You are an AI content extractor.
+
+Summarize the content from this article in a clear and structured format. Please return the response in JSON format with the following structure:
+
+{
+  "title": "Short title of the article",
+  "summary": "A 2-3 sentence overview of the article",
+  "keyPoints": [
+    "Point 1",
+    "Point 2",
+    "Point 3",
+    ...
+  ]
+}
+
+Here is the content extracted from the web URL:
+\n\n${content}
+`;
   }
 }
