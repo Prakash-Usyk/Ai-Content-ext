@@ -63,7 +63,18 @@ export class AiContentService {
         'User-Agent': 'Mozilla/5.0',
       },
     });
+
     const data = unfluff(response.data);
+
+    if (!data.text || data.text.trim() === '') {
+      return {
+        type: 'error',
+        data: {
+          url: url,
+          message: "Data couldn't be extracted",
+        },
+      };
+    }
 
     // articleText = await this.extractTextWithPuppeteer(url);
 
@@ -101,7 +112,6 @@ export class AiContentService {
       .replace(/```/, '')
       .trim();
 
-    // Step 2: Parse to JS object
     const parsedData = JSON.parse(cleaned);
 
     return {
