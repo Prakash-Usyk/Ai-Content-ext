@@ -58,12 +58,16 @@ export class AiContentService {
       };
     }
     let articleText;
-    // const response = await axios.get(url);
-    // const data = unfluff(response.data);
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    });
+    const data = unfluff(response.data);
 
-    articleText = await this.extractTextWithPuppeteer(url);
+    // articleText = await this.extractTextWithPuppeteer(url);
 
-    const prompt = await this.getPrompt(articleText);
+    const prompt = await this.getPrompt(data.text);
 
     let geminiResponse;
 
