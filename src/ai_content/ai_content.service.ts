@@ -48,41 +48,41 @@ export class AiContentService {
   }
 
   async extractAndSummarize(url: string) {
-    if (this.GEMINI_API_URL === '' || this.GEMINI_API_KEY === '') {
-      return {
-        type: 'error',
-        data: {
-          url: url,
-          message: 'Missing Environment Variables',
-        },
-      };
-    }
-    let articleText;
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-      },
-    });
-
-    const data = unfluff(response.data);
-
-    if (!data.text || data.text.trim() === '') {
-      return {
-        type: 'error',
-        data: {
-          url: url,
-          message: "Data couldn't be extracted",
-        },
-      };
-    }
-
-    // articleText = await this.extractTextWithPuppeteer(url);
-
-    const prompt = await this.getPrompt(data.text);
-
-    let geminiResponse;
-
     try {
+      if (this.GEMINI_API_URL === '' || this.GEMINI_API_KEY === '') {
+        return {
+          type: 'error',
+          data: {
+            url: url,
+            message: 'Missing Environment Variables',
+          },
+        };
+      }
+      let articleText;
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+        },
+      });
+
+      const data = unfluff(response.data);
+
+      if (!data.text || data.text.trim() === '') {
+        return {
+          type: 'error',
+          data: {
+            url: url,
+            message: "Data couldn't be extracted",
+          },
+        };
+      }
+
+      // articleText = await this.extractTextWithPuppeteer(url);
+
+      const prompt = await this.getPrompt(data.text);
+
+      let geminiResponse;
+
       geminiResponse = await axios.post(
         `${this.GEMINI_API_URL}?key=${this.GEMINI_API_KEY}`,
         {
@@ -93,6 +93,28 @@ export class AiContentService {
           ],
         },
       );
+
+      const aiResponse =
+        geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ??
+        'No summary available.';
+
+      const cleaned = aiResponse
+        .replace(/```json\n?/, '')
+        .replace(/```/, '')
+        .trim();
+
+      const parsedData = JSON.parse(cleaned);
+
+      return {
+        type: 'success',
+        data: {
+          url: url,
+          title: parsedData.title,
+          summary: parsedData.summary,
+          keyPoints: parsedData.keyPoints,
+          message: 'Data Fetched Sucessfully',
+        },
+      };
     } catch (err) {
       return {
         type: 'error',
@@ -102,28 +124,6 @@ export class AiContentService {
         },
       };
     }
-
-    const aiResponse =
-      geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ??
-      'No summary available.';
-
-    const cleaned = aiResponse
-      .replace(/```json\n?/, '')
-      .replace(/```/, '')
-      .trim();
-
-    const parsedData = JSON.parse(cleaned);
-
-    return {
-      type: 'success',
-      data: {
-        url: url,
-        title: parsedData.title,
-        summary: parsedData.summary,
-        keyPoints: parsedData.keyPoints,
-        message: 'Data Fetched Sucessfully',
-      },
-    };
   }
 
   async getPrompt(content): Promise<string> {
